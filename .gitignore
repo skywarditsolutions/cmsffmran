@@ -1,0 +1,33 @@
+node_modules/
+dist/
+build/
+*.log
+.env
+.env.local
+
+# Terraform
+infra/terraform/.terraform/
+infra/terraform/*.tfstate
+infra/terraform/*.tfstate.*
+infra/terraform/.terraform.lock.hcl
+infra/terraform/tfplan
+infra/terraform/build/
+# tflocal-generated provider endpoint overrides
+infra/terraform/localstack_providers_override.tf
+
+# Generated frontend env (written by setup-cognito.sh)
+frontend/.env.local
+
+# LocalStack
+volume/
+.localstack/
+
+# Build artifacts
+backend/dist/
+backend/.build/
+frontend/dist/
+
+# Editor
+.DS_Store
+.idea/
+.vscode/

@@ -1,0 +1,26 @@
+{
+  "name": "ran-prototype",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Request Assistance Now (RAN) - AWS-native prototype replacing FFM Help On Demand (HOD)",
+  "workspaces": [
+    "backend",
+    "frontend"
+  ],
+  "scripts": {
+    "localstack:up": "docker compose up -d",
+    "localstack:down": "docker compose down -v",
+    "bootstrap": "bash scripts/bootstrap-localstack.sh",
+    "seed": "npm run seed --workspace backend",
+    "build:backend": "npm run build --workspace backend",
+    "dev:frontend": "npm run dev --workspace frontend",
+    "build:frontend": "npm run build --workspace frontend",
+    "ws-bridge": "npm run ws-bridge --workspace backend",
+    "lint": "npm run lint --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

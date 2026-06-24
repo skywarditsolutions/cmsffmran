@@ -1,0 +1,101 @@
+{
+  "Comment": "RAN referral routing: match -> notify -> wait -> reroute; safety-net broadcast when no agent available",
+  "StartAt": "Match",
+  "States": {
+    "Match": {
+      "Type": "Task",
+      "Resource": "${match_arn}",
+      "Parameters": {
+        "requestId.$": "$.requestId"
+      },
+      "ResultPath": "$.match",
+      "Retry": [
+        {
+          "ErrorEquals": ["States.ALL"],
+          "MaxAttempts": 2,
+          "IntervalSeconds": 1
+        }
+      ],
+      "Next": "HasCandidate"
+    },
+    "HasCandidate": {
+      "Type": "Choice",
+      "Choices": [
+        {
+          "Variable": "$.match.matched",
+          "BooleanEquals": true,
+          "Next": "NotifyAndWait"
+        },
+        {
+          "Variable": "$.match.safetyNet",
+          "BooleanEquals": true,
+          "Next": "SafetyNetBroadcast"
+        }
+      ],
+      "Default": "Queued"
+    },
+    "NotifyAndWait": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::lambda:invoke.waitForTaskToken",
+      "Parameters": {
+        "FunctionName": "${notify_arn}",
+        "Payload": {
+          "requestId.$": "$.requestId",
+          "npn.$": "$.match.npn",
+          "taskToken.$": "$$.Task.Token"
+        }
+      },
+      "TimeoutSeconds": ${timeout_seconds},
+      "ResultPath": "$.accept",
+      "Catch": [
+        {
+          "ErrorEquals": ["States.Timeout"],
+          "ResultPath": "$.error",
+          "Next": "Match"
+        },
+        {
+          "ErrorEquals": ["ReferralRejected"],
+          "ResultPath": "$.error",
+          "Next": "Match"
+        }
+      ],
+      "Next": "Accepted"
+    },
+    "SafetyNetBroadcast": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::lambda:invoke.waitForTaskToken",
+      "Parameters": {
+        "FunctionName": "${safetynet_arn}",
+        "Payload": {
+          "requestId.$": "$.requestId",
+          "taskToken.$": "$$.Task.Token"
+        }
+      },
+      "TimeoutSeconds": ${safetynet_timeout_seconds},
+      "ResultPath": "$.accept",
+      "Catch": [
+        {
+          "ErrorEquals": ["States.Timeout"],
+          "ResultPath": "$.error",
+          "Next": "SafetyNetTimeoutCleanup"
+        }
+      ],
+      "Next": "Accepted"
+    },
+    "SafetyNetTimeoutCleanup": {
+      "Type": "Task",
+      "Resource": "${safetynet_timeout_arn}",
+      "Parameters": {
+        "requestId.$": "$.requestId"
+      },
+      "ResultPath": "$.cleanup",
+      "Next": "Queued"
+    },
+    "Accepted": {
+      "Type": "Succeed"
+    },
+    "Queued": {
+      "Type": "Succeed"
+    }
+  }
+}

@@ -1,0 +1,31 @@
+services:
+  localstack:
+    container_name: ran-localstack
+    image: localstack/localstack:3.7
+    ports:
+      - "4566:4566"
+    environment:
+      # Core services exercised by the prototype. Cognito and WebSocket API
+      # Gateway are emulated separately (see cognito-local + ws-bridge) because
+      # they are Pro/partial in community LocalStack. See docs/aws-mapping.md.
+      - SERVICES=dynamodb,lambda,stepfunctions,sns,ses,kms,iam,sts,logs,apigateway,events
+      - DEBUG=0
+      - LAMBDA_RUNTIME_ENVIRONMENT_TIMEOUT=60
+      - DOCKER_HOST=unix:///var/run/docker.sock
+      - PERSISTENCE=0
+    volumes:
+      - "./volume:/var/lib/localstack"
+      - "/var/run/docker.sock:/var/run/docker.sock"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4566/_localstack/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  cognito-local:
+    container_name: ran-cognito-local
+    image: jagregory/cognito-local:latest
+    ports:
+      - "9229:9229"
+    volumes:
+      - "./volume/cognito:/app/.cognito"
