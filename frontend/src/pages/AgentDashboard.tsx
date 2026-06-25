@@ -71,6 +71,7 @@ export function AgentDashboard() {
   const [histSortDir, setHistSortDir] = useState<"asc" | "desc">("desc");
   const [histOpen, setHistOpen] = useState(false);
   const [adminMessages, setAdminMessages] = useState<AdminMsg[]>([]);
+  const [dismissedAlerts, setDismissedAlerts] = useState<Set<string>>(new Set());
   const historyRef = useRef<HTMLDetailsElement>(null);
   const referralsRef = useRef<HTMLDivElement>(null);
   const servingRef = useRef<HTMLDivElement>(null);
@@ -141,9 +142,10 @@ export function AgentDashboard() {
     catch (e) { setError((e as Error).message); if (isSafetyNet) setSafetyNet((prev) => prev.filter((r) => r.requestId !== referral.requestId)); else setIncoming((prev) => prev.filter((r) => r.requestId !== referral.requestId)); }
   }
   async function reject(referral: Referral) { await api.rejectReferral(referral.requestId).catch(() => {}); setIncoming((prev) => prev.filter((r) => r.requestId !== referral.requestId)); }
-  async function setStatus(c: ActiveCase, status: string) { await api.updateReferralStatus(c.requestId, status); setCases((prev) => prev.map((x) => (x.requestId === c.requestId ? { ...x, status } : x))); refreshStats(); }
+  async function setStatus(c: ActiveCase, status: string) { await api.updateReferralStatus(c.requestId, status); if (status === "Completed" || status === "NotGoodReferral") { setCases((prev) => prev.map((x) => (x.requestId === c.requestId ? { ...x, status } : x))); refreshStats(); setTimeout(() => setCases((prev) => prev.filter((x) => x.requestId !== c.requestId)), 2000); } else { setCases((prev) => prev.map((x) => (x.requestId === c.requestId ? { ...x, status } : x))); refreshStats(); } }
   function logout() { clearSession(); navigate("/login?role=agent"); }
   async function dismissAdminMessage(id: string) { setAdminMessages((prev) => prev.filter((m) => m.id !== id)); try { await api.dismissMessage(id); } catch {} }
+  function dismissAlert(id: string) { setDismissedAlerts((prev) => new Set(prev).add(id)); }
 
   const initials = (profile?.name ?? session?.email ?? "?").split(" ").map((w: string) => w[0]).slice(0, 2).join("").toUpperCase();
   const calCells = buildCalendar(calYear, calMonth);
@@ -248,10 +250,16 @@ export function AgentDashboard() {
       {/* ============ MAIN CONTENT ============ */}
       <main className="agent-main">
         {/* Alerts */}
-        {error && <div className="alert error" role="alert">{error}</div>}
-        {missed.length > 0 && (
-          <div className="alert error" role="alert">
+        {error && !dismissedAlerts.has("error") && (
+          <div className="alert error dismissible" role="alert">
+            {error}
+            <button className="alert-dismiss" onClick={() => dismissAlert("error")} aria-label="Dismiss">×</button>
+          </div>
+        )}
+        {missed.length > 0 && !dismissedAlerts.has("missed") && (
+          <div className="alert error dismissible" role="alert">
             <strong>You missed {missed.length} referral{missed.length === 1 ? "" : "s"}.</strong> Consistently missing the 15-minute window may result in deactivation. Recent: {missed.slice(0, 3).map((m) => m.requestId.slice(-6)).join(", ")}.
+            <button className="alert-dismiss" onClick={() => dismissAlert("missed")} aria-label="Dismiss">×</button>
           </div>
         )}
 

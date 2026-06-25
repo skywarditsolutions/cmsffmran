@@ -7,11 +7,6 @@ const DEFAULTS = {
   admin: { email: "admin@ran.demo", password: "Admin#Demo123", npn: "" },
 };
 
-const DEMO_AGENTS = [
-  { label: "Bob Amos", email: "bob.amos@ran.demo", password: "Agent#Demo123", npn: "70000078" },
-  { label: "Kevin McTigue", email: "kevin.mctigue@ran.demo", password: "Agent#Demo123", npn: "70000079" },
-];
-
 export function Login() {
   const [params] = useSearchParams();
   const role = (params.get("role") as "agent" | "admin") ?? "agent";
@@ -81,28 +76,6 @@ export function Login() {
             {busy ? "Signing in..." : "Sign in"}
           </button>
         </div>
-        {role === "agent" && (
-          <div style={{ marginTop: "1.5rem", borderTop: "1px solid var(--gray-400)", paddingTop: "1rem" }}>
-            <div className="hint" style={{ marginBottom: "0.5rem" }}>Quick demo login (MI-only agents):</div>
-            <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
-              {DEMO_AGENTS.map((a) => (
-                <button
-                  key={a.email}
-                  className="btn secondary"
-                  type="button"
-                  disabled={busy}
-                  onClick={() => { setEmail(a.email); setPassword(a.password); doLogin(a.email, a.password, a.npn); }}
-                >
-                  {a.label}
-                </button>
-              ))}
-            </div>
-            <div className="hint" style={{ marginTop: "0.75rem" }}>
-              To route a request to these agents, submit with ZIP <strong>48201</strong> (Michigan).
-              Use language <strong>French</strong> for Bob or <strong>German</strong> for Kevin to target one specifically.
-            </div>
-          </div>
-        )}
       </form>
     </div>
   );
