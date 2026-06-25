@@ -45,6 +45,9 @@ const ZIP3: Record<string, ZipInfo> = {
   // Ohio
   "432": { state: "OH", city: "Columbus", lat: 39.96, lng: -82.99 },
   "441": { state: "OH", city: "Cleveland", lat: 41.5, lng: -81.69 },
+  // Michigan (demo-only state: Bob Amos & Kevin McTigue are the sole agents)
+  "481": { state: "MI", city: "Dearborn", lat: 42.32, lng: -83.18 },
+  "482": { state: "MI", city: "Detroit", lat: 42.33, lng: -83.05 },
 };
 
 const DEFAULT: ZipInfo = { state: "FL", city: "Miami", lat: 27.66, lng: -81.52 };

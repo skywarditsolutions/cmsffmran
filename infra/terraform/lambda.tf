@@ -35,7 +35,9 @@ locals {
       WS_CALLBACK_URL       = "http://host.docker.internal:3002"
       AWS_ENDPOINT_OVERRIDE = "http://host.docker.internal:4566"
     } : {
-      WS_CALLBACK_URL = var.create_apigw ? aws_apigatewayv2_stage.ws[0].invoke_url : ""
+      # The @connections Management API requires an https:// endpoint, but
+      # the WebSocket stage invoke_url is wss://. Convert the protocol.
+      WS_CALLBACK_URL = var.create_apigw ? replace(aws_apigatewayv2_stage.ws[0].invoke_url, "wss://", "https://") : ""
     },
   )
 

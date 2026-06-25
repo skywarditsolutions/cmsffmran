@@ -44,7 +44,11 @@ create_user() {
 
 create_user "agent@ran.demo" agents 70000000 "Agent#Demo123"
 create_user "admin@ran.demo" admins  ""        "Admin#Demo123"
+create_user "bob.amos@ran.demo"       agents 70000078 "Agent#Demo123"
+create_user "kevin.mctigue@ran.demo"  agents 70000079 "Agent#Demo123"
 
 echo "    demo users ready:"
-echo "      agent@ran.demo / Agent#Demo123  (NPN 70000000)"
+echo "      agent@ran.demo / Agent#Demo123        (NPN 70000000)"
 echo "      admin@ran.demo / Admin#Demo123"
+echo "      bob.amos@ran.demo / Agent#Demo123     (NPN 70000078, MI, French)"
+echo "      kevin.mctigue@ran.demo / Agent#Demo123 (NPN 70000079, MI, German)"

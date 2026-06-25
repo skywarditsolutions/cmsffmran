@@ -16,4 +16,6 @@ export const LANGUAGES = [
   "Tagalog",
   "Korean",
   "Creole",
+  "French",
+  "German",
 ];

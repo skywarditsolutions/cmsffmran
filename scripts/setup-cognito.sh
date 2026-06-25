@@ -38,8 +38,11 @@ create_user() {
 }
 
 # Demo agent maps to seeded NPN 70000000; demo admin has no NPN.
-create_user "agent@ran.demo"  agents 70000000 "Agent#Demo123"
-create_user "admin@ran.demo"  admins ""        "Admin#Demo123"
+# Bob Amos (NPN 70000078) and Kevin McTigue (NPN 70000079) are MI-only agents.
+create_user "agent@ran.demo"       agents 70000000 "Agent#Demo123"
+create_user "admin@ran.demo"       admins ""        "Admin#Demo123"
+create_user "bob.amos@ran.demo"    agents 70000078 "Agent#Demo123"
+create_user "kevin.mctigue@ran.demo" agents 70000079 "Agent#Demo123"
 
 cat > "$ROOT/frontend/.env.local" <<EOF
 VITE_API_URL=http://localhost:3000
@@ -50,4 +53,8 @@ VITE_COGNITO_POOL_ID=$POOL_ID
 EOF
 
 echo "    cognito ready (pool=$POOL_ID client=$CLIENT_ID)"
-echo "    demo users: agent@ran.demo / Agent#Demo123   admin@ran.demo / Admin#Demo123"
+echo "    demo users:"
+echo "      agent@ran.demo / Agent#Demo123         (NPN 70000000)"
+echo "      admin@ran.demo / Admin#Demo123"
+echo "      bob.amos@ran.demo / Agent#Demo123      (NPN 70000078, MI, French)"
+echo "      kevin.mctigue@ran.demo / Agent#Demo123  (NPN 70000079, MI, German)"

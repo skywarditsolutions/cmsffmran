@@ -24,6 +24,12 @@ function fullWeekAvailability() {
   return Array.from({ length: 7 }, (_, day) => ({ day, start: "08:00", end: "20:00" }));
 }
 
+// 24/7 availability for demo agents so they receive referrals regardless of
+// the Lambda's UTC timezone.
+function alwaysAvailable() {
+  return Array.from({ length: 7 }, (_, day) => ({ day, start: "00:00", end: "23:59" }));
+}
+
 async function main() {
   const { putAgent } = await import("../src/lib/repo.js");
   const { putConfig } = await import("../src/lib/config.js");
@@ -34,7 +40,9 @@ async function main() {
   console.log(`Seeding agents across ${states.length} states...`);
 
   let count = 0;
-  const entries = Object.entries(ZIP_INFO);
+  // Skip MI ZIP prefixes in the main loop — Bob Amos & Kevin McTigue are the
+  // only MI agents (seeded separately below) so demo requests route to them.
+  const entries = Object.entries(ZIP_INFO).filter(([, info]) => info.state !== "MI");
 
   for (let i = 0; i < entries.length; i++) {
     const [, info] = entries[i];
@@ -91,6 +99,65 @@ async function main() {
   });
 
   console.log(`Seeded ${count} agents and default runtime config.`);
+
+  // Demo-specific agents: Bob Amos & Kevin McTigue are the ONLY agents licensed
+  // in Michigan. Each also speaks a unique language (French / German) so a demo
+  // request with ZIP 481xx + that language routes to exactly one of them.
+  const miInfo = ZIP_INFO["482"];
+  const demoAgents: AgentBroker[] = [
+    {
+      npn: "70000078",
+      name: "Bob Amos",
+      email: "bob.amos@ran.demo",
+      phone: "+15551000078",
+      licensedStates: ["MI"],
+      activeStates: ["MI"],
+      languages: ["English", "French"],
+      notificationPrefs: ["push", "sms", "email"],
+      availability: alwaysAvailable(),
+      todayAvailability: null,
+      outOfOfficeUntil: null,
+      outOfOfficeFrom: null,
+      trainingCurrent: true,
+      passwordUpdatedAt: new Date().toISOString(),
+      status: "online",
+      currentLoad: 0,
+      maxLoad: 5,
+      missedReferralCount: 0,
+      lastAssignedAt: null,
+      lat: miInfo.lat + 0.01,
+      lng: miInfo.lng + 0.01,
+    },
+    {
+      npn: "70000079",
+      name: "Kevin McTigue",
+      email: "kevin.mctigue@ran.demo",
+      phone: "+15551000079",
+      licensedStates: ["MI"],
+      activeStates: ["MI"],
+      languages: ["English", "German"],
+      notificationPrefs: ["push", "sms", "email"],
+      availability: alwaysAvailable(),
+      todayAvailability: null,
+      outOfOfficeUntil: null,
+      outOfOfficeFrom: null,
+      trainingCurrent: true,
+      passwordUpdatedAt: new Date().toISOString(),
+      status: "online",
+      currentLoad: 0,
+      maxLoad: 5,
+      missedReferralCount: 0,
+      lastAssignedAt: null,
+      lat: miInfo.lat - 0.01,
+      lng: miInfo.lng - 0.01,
+    },
+  ];
+  for (const a of demoAgents) {
+    await putAgent(a);
+    count++;
+  }
+  console.log(`Seeded ${demoAgents.length} demo agents (MI-only: ${demoAgents.map((a) => a.name).join(", ")}).`);
+  console.log(`Total agents: ${count}.`);
 }
 
 main().catch((e) => {
