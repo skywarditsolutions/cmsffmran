@@ -10,6 +10,7 @@ const DEFAULTS = {
 export function Login() {
   const [params] = useSearchParams();
   const role = (params.get("role") as "agent" | "admin") ?? "agent";
+  const expired = params.get("expired") === "1";
   const navigate = useNavigate();
   const defaults = DEFAULTS[role];
 
@@ -40,6 +41,11 @@ export function Login() {
         pre-filled.
       </p>
       <form onSubmit={onSubmit} className="card">
+        {expired && !error && (
+          <div className="alert warning" role="alert">
+            Your session has expired. Please sign in again.
+          </div>
+        )}
         {error && (
           <div className="alert error" role="alert">
             {error}

@@ -456,6 +456,10 @@ legend {
   background: #e7f4e4;
   border-left: 4px solid var(--green);
 }
+.alert.warning {
+  background: #fff4e0;
+  border-left: 4px solid #e8a020;
+}
 
 .status-badge {
   display: inline-block;

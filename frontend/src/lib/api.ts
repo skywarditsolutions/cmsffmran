@@ -1,5 +1,5 @@
 import { config } from "./config";
-import { authHeaders, getSession } from "./auth";
+import { authHeaders, getSession, refreshSession, clearSession } from "./auth";
 
 async function request<T>(
   method: string,
@@ -7,14 +7,36 @@ async function request<T>(
   body?: unknown,
   auth = false,
 ): Promise<T> {
-  const res = await fetch(`${config.apiUrl}${path}`, {
-    method,
-    headers: {
-      "Content-Type": "application/json",
-      ...(auth ? authHeaders(getSession()) : {}),
-    },
-    body: body ? JSON.stringify(body) : undefined,
-  });
+  const doFetch = (): Promise<Response> =>
+    fetch(`${config.apiUrl}${path}`, {
+      method,
+      headers: {
+        "Content-Type": "application/json",
+        ...(auth ? authHeaders(getSession()) : {}),
+      },
+      body: body ? JSON.stringify(body) : undefined,
+    });
+
+  let res = await doFetch();
+
+  // If we get 401 and this is an authenticated request, try refreshing the
+  // Cognito token once before giving up. If refresh fails, clear session and
+  // redirect to login so the user gets a clear re-auth prompt instead of a
+  // confusing "Unauthorized" error.
+  if (res.status === 401 && auth) {
+    const refreshed = await refreshSession();
+    if (refreshed) {
+      res = await doFetch();
+    } else {
+      const role = getSession()?.role ?? "agent";
+      clearSession();
+      if (!window.location.pathname.startsWith("/login")) {
+        window.location.href = `/login?role=${role}&expired=1`;
+      }
+      throw new Error("Session expired. Please sign in again.");
+    }
+  }
+
   const text = await res.text();
   const data = text ? JSON.parse(text) : {};
   if (!res.ok) throw new Error(data.error ?? `Request failed (${res.status})`);
