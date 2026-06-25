@@ -24,7 +24,7 @@ interface MatchOutput {
   matched: boolean;
   npn?: string;
   reason?: string;
-  safetyNet?: boolean;
+  safetyNet: boolean;
 }
 
 // Step Functions task: select the next best agent for a request, excluding any
@@ -32,9 +32,9 @@ interface MatchOutput {
 // attempt cap, and tentatively reserves load on the chosen agent.
 export const sfnMatch = async (input: MatchInput): Promise<MatchOutput> => {
   const req = await getRequest(input.requestId);
-  if (!req) return { matched: false, reason: "not-found" };
+  if (!req) return { matched: false, safetyNet: false, reason: "not-found" };
   if (["Accepted", "InProgress", "Completed", "NotGoodReferral"].includes(req.status)) {
-    return { matched: false, reason: "already-resolved" };
+    return { matched: false, safetyNet: false, reason: "already-resolved" };
   }
 
   const history = [...req.routingHistory];
@@ -60,7 +60,7 @@ export const sfnMatch = async (input: MatchInput): Promise<MatchOutput> => {
     await patchRequest(req.requestId, { status: "Queued", routingHistory: history });
     await pushToChannel(req.requestId, "status", { status: "Queued" });
     await pushToChannel("admin", "requestUpdated", { requestId: req.requestId, status: "Queued" });
-    return { matched: false, reason: "max-attempts" };
+    return { matched: false, safetyNet: false, reason: "max-attempts" };
   }
 
   const agents = await listAgentsForState(req.state);
@@ -94,7 +94,7 @@ export const sfnMatch = async (input: MatchInput): Promise<MatchOutput> => {
   await pushToChannel(req.requestId, "status", { status: "Notified" });
   await pushToChannel("admin", "requestUpdated", { requestId: req.requestId, status: "Notified", npn });
 
-  return { matched: true, npn };
+  return { matched: true, safetyNet: false, npn };
 };
 
 interface NotifyInput {
