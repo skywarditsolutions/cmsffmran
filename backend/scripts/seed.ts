@@ -31,10 +31,19 @@ function alwaysAvailable() {
 }
 
 async function main() {
-  const { putAgent } = await import("../src/lib/repo.js");
+  const { putAgent, listAllRequests } = await import("../src/lib/repo.js");
   const { putConfig } = await import("../src/lib/config.js");
   const { ZIP_INFO } = await import("../src/lib/zip.js");
   const { env } = await import("../src/lib/env.js");
+  const { DeleteCommand } = await import("@aws-sdk/lib-dynamodb");
+  const { ddb } = await import("../src/lib/clients.js");
+
+  // Clean up test requests from previous runs so the admin dashboard starts fresh.
+  const existing = await listAllRequests();
+  for (const r of existing) {
+    await ddb.send(new DeleteCommand({ TableName: env.requestsTable, Key: { requestId: r.requestId } }));
+  }
+  if (existing.length > 0) console.log(`Cleared ${existing.length} existing request(s).`);
 
   const states = [...new Set(Object.values(ZIP_INFO).map((z) => z.state))];
   console.log(`Seeding agents across ${states.length} states...`);

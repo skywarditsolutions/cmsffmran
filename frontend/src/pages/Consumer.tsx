@@ -3,13 +3,14 @@ import { api } from "../lib/api";
 import { LANGUAGES } from "../lib/config";
 import { useChannel } from "../lib/useChannel";
 
-type Phase = "form" | "searching" | "connected" | "queued";
+type Phase = "form" | "searching" | "connected" | "completed" | "queued";
 
 const STATUS_COPY: Record<string, string> = {
   Matching: "Finding an available agent or broker near you...",
   Notified: "We found an agent and are waiting for them to accept...",
   Accepted: "An agent has accepted and will call you shortly.",
   InProgress: "Your agent is assisting you.",
+  Completed: "Your enrollment assistance is complete.",
   Queued: "All agents are busy. You are in line and will be contacted soon.",
   SafetyNet: "No agents are on duty right now. We've notified licensed agents in your state; the first to respond will call you.",
 };
@@ -35,6 +36,9 @@ export function Consumer() {
         const r = await api.getRequest(requestId);
         if (r.assignedAgent) setAgent(r.assignedAgent);
       }
+    }
+    if (status === "Completed") {
+      setPhase("completed");
     }
   });
 
@@ -91,6 +95,17 @@ export function Consumer() {
                 <p>
                   <strong>{agent.name}</strong> will call you from{" "}
                   <strong>{agent.phone}</strong>. Please keep your phone nearby.
+                </p>
+              )}
+            </div>
+          )}
+          {phase === "completed" && (
+            <div className="alert success" role="status">
+              <strong>Your enrollment assistance is complete.</strong>
+              {agent && (
+                <p>
+                  Your agent <strong>{agent.name}</strong> has finished assisting you. If you need
+                  further help, you can submit a new request at any time.
                 </p>
               )}
             </div>
@@ -207,7 +222,7 @@ export function Consumer() {
         <fieldset>
           <legend>Consent</legend>
           <div className="checkbox-row">
-            <input id="consentTcpa" name="consentTcpa" type="checkbox" required />
+            <input id="consentTcpa" name="consentTcpa" type="checkbox" />
             <label htmlFor="consentTcpa">
               I agree to be contacted by phone, including by text or autodialed call, at the number
               I provided, by a Marketplace-registered agent or broker. I understand consent is not a

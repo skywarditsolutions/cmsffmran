@@ -122,7 +122,7 @@ export const adminRequests = async (
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
     .slice(0, 25);
 
-  // Decrypt PII so admin can see consumer contact information
+  // Decrypt PII so admin can see masked consumer contact information
   const withPii = await Promise.all(sorted.map(async (r) => {
     let consumer: { firstName?: string; lastName?: string; phone?: string } = {};
     try { const pii = await decryptPII(r.piiEncrypted); consumer = { firstName: pii.firstName, lastName: pii.lastName, phone: pii.phone }; } catch { /* KMS not available */ }
@@ -138,8 +138,9 @@ export const adminRequests = async (
       state: r.state,
       zip: r.zip,
       city: r.city,
-      consumer: consumer.firstName ? `${consumer.firstName} ${consumer.lastName}` : "Unknown",
-      consumerPhone: consumer.phone ?? "",
+      // Mask PII: show first initial + last initial only, mask phone digits
+      consumer: consumer.firstName ? `${consumer.firstName[0]}** ${consumer.lastName?.[0] ?? "*"}**` : "Unknown",
+      consumerPhone: consumer.phone ? consumer.phone.replace(/\d(?=\d{2})/g, "*") : "",
       safetyNet: r.safetyNet,
       assignedNpn: r.assignedNpn,
       createdAt: r.createdAt,

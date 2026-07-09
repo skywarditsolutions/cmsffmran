@@ -23,8 +23,11 @@ export function Login() {
     setBusy(true);
     setError("");
     try {
-      await login(em, pw, role, role === "agent" ? npn : undefined);
-      navigate(role === "agent" ? "/agent" : "/admin", { replace: true });
+      const session = await login(em, pw, role, role === "agent" ? npn : undefined);
+      // Redirect based on the actual Cognito role, not the URL parameter.
+      // This prevents an admin from landing on the agent dashboard if they
+      // sign in from the agent login page (and vice versa).
+      navigate(session.role === "admin" ? "/admin" : "/agent", { replace: true });
     } catch (err) {
       setError((err as Error).message);
     } finally {

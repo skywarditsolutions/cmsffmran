@@ -25,7 +25,15 @@
 
 ---
 
+### DEMO - We demo the solution and all 3 screens. Sheyn drives, Bob narrates
+We studied the current solution in depth. And believe we can offer a stronger alternative. Here is the prototype we came up
+1. Submit a Request -> Wait for it to show how it gets routed. We will talk about routing logic later
+2. Show Agent/Broker page. Go over left panel, right panel, configurable schedule, history, etc. We will add links to Training and other details as needed
+3. Show Request being accepted. Routing logic is defined in Step Functions which we will cover next
+4. Show Admin dashboard. Talk about analytics, history.... aka a Control Pane over your entire operations. You can see which agents are online. You can even reach out to them if needed. 
 
+Note, this is just a prototype that the team built in couple of days. Native apps for iOS and Android will be developed in couple of weeks.
+Now let's go deeper and look under the hood. There were 7 questions raised from you guys so will answer them next and show examples within a solution for each
 
 ## Q1: Non-Proprietary Solution & Government Maintainability (7 min) — Sheyn
 
@@ -33,7 +41,7 @@
 
 ### Talking Points
 
-- "Every line of code, infrastructure, and documentation is in our public GitHub repo. There are zero proprietary dependencies, zero vendor lock-in, and zero black-box components."
+- "Every line of code, infrastructure, and documentation is in our GitHub repo. There are zero proprietary dependencies, zero vendor lock-in, and zero black-box components."
 - "The entire stack uses open-source technologies: React, TypeScript, Node.js Lambda, DynamoDB, Step Functions, Cognito, API Gateway. All AWS-native, all Government-owned upon delivery."
 - "Infrastructure is defined as code in Terraform. A Government team can reproduce the entire environment by running `terraform apply` with a different region parameter. No manual console clicks."
 - "All documentation lives alongside the code: architecture diagrams, security compliance mapping, deployment scripts. The Government gets the repo and everything in it."
@@ -68,7 +76,7 @@
 
 ### Talking Points
 
-- "Routing is orchestrated by AWS Step Functions, a visual, auditable workflow. Every request submitted maps to one Execution run of the step Function. You can see every state, every transition, every timeout in the ASL definition file. AND this workflow is very easy to modify and test."
+- "Routing is orchestrated by AWS Step Functions, a visual, auditable workflow. Every request submitted maps to one Execution run of the step Function. You can see every state, every transition, every timeout in the ASL definition file. AND this workflow is very easy to modify and test." **SHOW STEPFUNCTIONS in AWS here**
 - "The matching algorithm is pure TypeScript (or can be implemented in any other language Python, JS, Java, etc.) in `backend/src/lib/matching.ts`. It's readable, testable, and modifiable by any Government engineer."
 - "Business rules are NOT hardcoded. They live in a DynamoDB config table and are editable in real-time from the admin dashboard without a redeploy."
 - "Eligibility filters: agent must be online, training current, not out of office, licensed in the consumer's state, speak the consumer's language, have capacity, and be within their availability window."
@@ -127,7 +135,7 @@
 ### Talking Points
 
 - "The consumer intake form at `/assist` is designed to be embedded as a widget within HealthCare.gov's existing pages. It's a self-contained React component that communicates via REST API."
-- "The form collects exactly what the SOO requires: name, phone, phone type, preferred contact method, ZIP code, preferred language, and TCPA consent. It includes the third-party disclaimer, non-endorsement notice, and limited-use-of-information notice."
+- "The form collects exactly what the existing application has (but this can be easily expanded in the future): name, phone, phone type, preferred contact method, ZIP code, preferred language, and TCPA consent. It includes the third-party disclaimer, non-endorsement notice, and limited-use-of-information notice."
 - "The API is a standard HTTP REST surface: `POST /requests` for submission, `GET /requests/{id}` for status. Authentication for consumer endpoints is unauthenticated (public intake), while agent and admin endpoints require Cognito JWT."
 - "The consumer status page uses WebSocket to push live updates without page navigation. The consumer can stay on HealthCare.gov and see their status change in real-time."
 - "For production integration: the form would sit behind HealthCare.gov's existing SSO/identity layer. We'd coordinate with the CMS Marketplace integration team on API contracts, callback URLs, and co-branding requirements. The form is already styled to match HealthCare.gov's visual language."

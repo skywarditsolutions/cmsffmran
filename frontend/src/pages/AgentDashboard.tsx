@@ -115,7 +115,7 @@ export function AgentDashboard() {
     if (msg.type === "adminNotification") setAdminMessages((prev) => [...prev, { id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`, from: msg.payload.from ?? "CMS Admin", message: msg.payload.message, sentAt: new Date().toISOString(), channel: "push" }]);
   });
 
-  async function toggleOnline() { const next = online ? "offline" : "online"; await api.setOnline(next); setOnline(!online); refreshStats(); }
+  async function toggleOnline() { if (online && !window.confirm("Go offline? You will stop receiving new referrals.")) return; const next = online ? "offline" : "online"; await api.setOnline(next); setOnline(!online); refreshStats(); }
   async function saveTodayAvailability() { try { const stop = todayOn && todayStop ? new Date(todayStop).toISOString() : null; await api.setTodayAvailability({ accepting: todayOn, stopReferralsAt: stop }); setTodaySaved(true); setSaveError(""); setTimeout(() => setTodaySaved(false), 2500); } catch (e) { setSaveError((e as Error).message); } }
   async function saveOutOfOffice() { try { const from = oooFrom ? new Date(oooFrom + "T00:00:00").toISOString() : null; const until = oooUntil ? new Date(oooUntil + "T23:59:59").toISOString() : null; await api.setOutOfOffice(from, until); setOooSaved(true); setSaveError(""); setTimeout(() => setOooSaved(false), 2500); } catch (e) { setSaveError((e as Error).message); } }
   async function saveSchedule() { try { await api.updateProfile({ availability: schedule }); setOriginalSchedule(schedule); setScheduleSaved(true); setSaveError(""); setTimeout(() => setScheduleSaved(false), 2500); } catch (e) { setSaveError((e as Error).message); } }
