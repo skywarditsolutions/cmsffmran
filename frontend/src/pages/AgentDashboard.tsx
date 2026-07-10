@@ -142,7 +142,7 @@ export function AgentDashboard() {
     catch (e) { setError((e as Error).message); if (isSafetyNet) setSafetyNet((prev) => prev.filter((r) => r.requestId !== referral.requestId)); else setIncoming((prev) => prev.filter((r) => r.requestId !== referral.requestId)); }
   }
   async function reject(referral: Referral) { await api.rejectReferral(referral.requestId).catch(() => {}); setIncoming((prev) => prev.filter((r) => r.requestId !== referral.requestId)); }
-  async function setStatus(c: ActiveCase, status: string) { await api.updateReferralStatus(c.requestId, status); if (status === "Completed" || status === "NotGoodReferral") { setCases((prev) => prev.map((x) => (x.requestId === c.requestId ? { ...x, status } : x))); refreshStats(); setTimeout(() => setCases((prev) => prev.filter((x) => x.requestId !== c.requestId)), 2000); } else { setCases((prev) => prev.map((x) => (x.requestId === c.requestId ? { ...x, status } : x))); refreshStats(); } }
+  async function setStatus(c: ActiveCase, status: string) { try { await api.updateReferralStatus(c.requestId, status); if (status === "Completed" || status === "NotGoodReferral") { setCases((prev) => prev.map((x) => (x.requestId === c.requestId ? { ...x, status } : x))); refreshStats(); setTimeout(() => setCases((prev) => prev.filter((x) => x.requestId !== c.requestId)), 2000); } else { setCases((prev) => prev.map((x) => (x.requestId === c.requestId ? { ...x, status } : x))); refreshStats(); } } catch (e) { setError((e as Error).message); } }
   function logout() { clearSession(); navigate("/login?role=agent"); }
   async function dismissAdminMessage(id: string) { setAdminMessages((prev) => prev.filter((m) => m.id !== id)); try { await api.dismissMessage(id); } catch {} }
   function dismissAlert(id: string) { setDismissedAlerts((prev) => new Set(prev).add(id)); }
@@ -280,7 +280,11 @@ export function AgentDashboard() {
                 </div>
                 <div className="countdown-bar"><div className={`countdown-fill urgency-${urgency}`} style={{ width: `${pct}%` }} /></div>
                 <div className="hint">Consumer details are hidden until you accept (PII protection).</div>
-                <div className="row" style={{ marginTop: "0.75rem" }}><button className="btn success" onClick={() => accept(r, false)}>Accept</button><button className="btn secondary" onClick={() => reject(r)}>Reject</button></div>
+                {activeCases > 0 ? (
+                  <div className="hint" style={{ marginTop: "0.75rem", color: "var(--red)" }}>Complete your current active referral before accepting another.</div>
+                ) : (
+                  <div className="row" style={{ marginTop: "0.75rem" }}><button className="btn success" onClick={() => accept(r, false)}>Accept</button><button className="btn secondary" onClick={() => reject(r)}>Reject</button></div>
+                )}
               </div>
             );
           })}
@@ -293,7 +297,11 @@ export function AgentDashboard() {
                   <div className="referral-card safetynet" key={r.requestId} role="alert">
                     <div className="referral-header"><div><strong>Safety-net referral</strong></div><div className="referral-location">{r.language} speaker{r.city ? ` in ${r.city}, ${r.state}` : ` in ${r.state}`} (ZIP {r.zip}) <a href={mapUrl} target="_blank" rel="noopener noreferrer" className="map-link">View map</a></div></div>
                     <div className="hint">No agent was on duty. Be the first to accept. No countdown, no penalty.</div>
-                    <div className="row" style={{ marginTop: "0.75rem" }}><button className="btn success" onClick={() => accept(r, true)}>Accept</button></div>
+                    {activeCases > 0 ? (
+                      <div className="hint" style={{ marginTop: "0.75rem", color: "var(--red)" }}>Complete your current active referral before accepting another.</div>
+                    ) : (
+                      <div className="row" style={{ marginTop: "0.75rem" }}><button className="btn success" onClick={() => accept(r, true)}>Accept</button></div>
+                    )}
                   </div>
                 );
               })}

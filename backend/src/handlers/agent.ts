@@ -58,6 +58,14 @@ export const agentAccept = async (
     if (!agent || !agent.activeStates.includes(req.state) || !agent.trainingCurrent) {
       return bad("Not eligible to accept this safety-net referral", 403);
     }
+    // Limit to one active case at a time.
+    const allReqs = await listAllRequests();
+    const hasActive = allReqs.some(
+      (r) => r.assignedNpn === npn && (r.status === "Accepted" || r.status === "InProgress"),
+    );
+    if (hasActive) {
+      return bad("You already have an active referral. Complete or close it before accepting another.", 409);
+    }
     const won = await claimSafetyNetRequest(requestId, npn, "SafetyNet");
     if (!won) {
       return bad("Another agent accepted this referral first", 409);
@@ -92,6 +100,16 @@ export const agentAccept = async (
   // Standard routing path: only the assigned agent may accept.
   if (req.assignedNpn !== npn || req.status !== "Notified") {
     return bad("Referral is no longer available", 409);
+  }
+
+  // Limit to one active case at a time: check if the agent already has an
+  // Accepted or InProgress referral.
+  const allRequests = await listAllRequests();
+  const hasActive = allRequests.some(
+    (r) => r.assignedNpn === npn && (r.status === "Accepted" || r.status === "InProgress"),
+  );
+  if (hasActive) {
+    return bad("You already have an active referral. Complete or close it before accepting another.", 409);
   }
 
   const acceptedAt = new Date().toISOString();
