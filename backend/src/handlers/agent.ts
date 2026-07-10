@@ -209,7 +209,29 @@ export const agentProfileGet = async (
   if (!npn) return bad("Unauthorized", 401);
   const agent = await getAgent(npn);
   if (!agent) return bad("Agent not found", 404);
-  return ok(agent);
+
+  // Rehydrate the agent's currently-active cases (Accepted/InProgress) so the
+  // dashboard can restore "Currently serving" after a reload. Without this the
+  // client loses this state on refresh, hiding the one-active-referral guard
+  // and letting the agent attempt a second accept that the backend rejects.
+  const all = await listAllRequests();
+  const active = all.filter(
+    (r) => r.assignedNpn === npn && (r.status === "Accepted" || r.status === "InProgress"),
+  );
+  const activeCases = await Promise.all(
+    active.map(async (r) => ({
+      requestId: r.requestId,
+      consumer: await decryptPII(r.piiEncrypted),
+      zip: r.zip,
+      city: r.city,
+      language: r.language,
+      status: r.status,
+      acceptedAt: r.acceptedAt,
+      safetyNet: r.safetyNet ?? false,
+    })),
+  );
+
+  return ok({ ...agent, activeCases });
 };
 
 interface ProfileUpdateBody {

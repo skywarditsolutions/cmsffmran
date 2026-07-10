@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { api } from "../lib/api";
 import { LANGUAGES } from "../lib/config";
 import { useChannel } from "../lib/useChannel";
@@ -24,23 +24,51 @@ export function Consumer() {
   const [submitting, setSubmitting] = useState(false);
   const [contactMethod, setContactMethod] = useState<"Phone" | "Email">("Phone");
 
-  useChannel(requestId ? [requestId] : [], async (msg) => {
-    if (msg.type !== "status") return;
-    const status = msg.payload.status as string;
-    setStatusText(STATUS_COPY[status] ?? status);
-    if (status === "Queued") setPhase("queued");
-    if (status === "SafetyNet") setPhase("searching");
-    if (status === "Accepted" || status === "InProgress") {
-      setPhase("connected");
-      if (requestId) {
-        const r = await api.getRequest(requestId);
-        if (r.assignedAgent) setAgent(r.assignedAgent);
+  // Single source of truth for turning a request status into the consumer's
+  // on-screen phase. Used by both the WebSocket push and the polling fallback.
+  const applyStatus = useCallback(
+    async (status?: string, assignedAgent?: { name: string; phone: string }) => {
+      if (!status) return;
+      setStatusText(STATUS_COPY[status] ?? status);
+      if (status === "Completed") { setPhase("completed"); return; }
+      if (status === "Accepted" || status === "InProgress") {
+        setPhase("connected");
+        if (assignedAgent) setAgent(assignedAgent);
+        else if (requestId) {
+          try {
+            const r = await api.getRequest(requestId);
+            if (r.assignedAgent) setAgent(r.assignedAgent);
+          } catch { /* ignore */ }
+        }
+        return;
       }
-    }
-    if (status === "Completed") {
-      setPhase("completed");
-    }
-  });
+      if (status === "Queued") { setPhase("queued"); return; }
+      // Matching, Notified, SafetyNet -> still searching.
+      setPhase("searching");
+    },
+    [requestId],
+  );
+
+  useChannel(
+    requestId ? [requestId] : [],
+    (msg) => { if (msg.type === "status") applyStatus(msg.payload.status as string); },
+    () => { if (requestId) api.getRequest(requestId).then((r) => applyStatus(r.status, r.assignedAgent)).catch(() => {}); },
+  );
+
+  // Polling fallback: even if a real-time push is missed (e.g. a dropped
+  // WebSocket), keep the consumer's screen in sync while a request is active.
+  useEffect(() => {
+    if (!requestId || phase === "form" || phase === "completed") return;
+    let stopped = false;
+    const poll = async () => {
+      try {
+        const r = await api.getRequest(requestId);
+        if (!stopped) applyStatus(r.status, r.assignedAgent);
+      } catch { /* ignore */ }
+    };
+    const t = setInterval(poll, 8000);
+    return () => { stopped = true; clearInterval(t); };
+  }, [requestId, phase, applyStatus]);
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();

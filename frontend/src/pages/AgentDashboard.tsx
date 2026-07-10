@@ -89,7 +89,10 @@ export function AgentDashboard() {
     api.agentHistory().then((r) => setHistory(r.history)).catch(() => {});
   }, []);
 
-  useEffect(() => {
+  // Loads the agent profile and rehydrates persisted state (admin messages and
+  // active "Currently serving" cases) so a page reload or WebSocket reconnect
+  // restores the correct view instead of an empty one.
+  const loadProfile = useCallback(() => {
     api.getProfile().then((p) => {
       setProfile(p); setOnline(p.status === "online");
       setTodayOn(p.todayAvailability?.accepting ?? false);
@@ -99,10 +102,17 @@ export function AgentDashboard() {
       const avail = p.availability ?? []; setSchedule(avail); setOriginalSchedule(avail);
       setNotifPrefs(p.notificationPrefs ?? ["sms", "email"]);
       setAdminMessages(p.adminMessages ?? []);
+      if (Array.isArray(p.activeCases)) setCases(p.activeCases);
     }).catch((e) => setError(e.message));
+  }, []);
+
+  const loadAll = useCallback(() => {
+    loadProfile();
     api.missedReferrals().then((r) => setMissed(r.missed)).catch(() => {});
     refreshStats();
-  }, [refreshStats]);
+  }, [loadProfile, refreshStats]);
+
+  useEffect(() => { loadAll(); }, [loadAll]);
 
   useEffect(() => { const t = setInterval(() => setNow(Date.now()), 500); return () => clearInterval(t); }, []);
 
@@ -113,7 +123,7 @@ export function AgentDashboard() {
     if (msg.type === "referralMissed") { api.missedReferrals().then((r) => setMissed(r.missed)).catch(() => {}); refreshStats(); }
     if (msg.type === "safetyNetClosed") setSafetyNet((prev) => prev.filter((r) => r.requestId !== msg.payload.requestId));
     if (msg.type === "adminNotification") setAdminMessages((prev) => [...prev, { id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`, from: msg.payload.from ?? "CMS Admin", message: msg.payload.message, sentAt: new Date().toISOString(), channel: "push" }]);
-  });
+  }, () => { loadAll(); });
 
   async function toggleOnline() { if (online && !window.confirm("Go offline? You will stop receiving new referrals.")) return; const next = online ? "offline" : "online"; await api.setOnline(next); setOnline(!online); refreshStats(); }
   async function saveTodayAvailability() { try { const stop = todayOn && todayStop ? new Date(todayStop).toISOString() : null; await api.setTodayAvailability({ accepting: todayOn, stopReferralsAt: stop }); setTodaySaved(true); setSaveError(""); setTimeout(() => setTodaySaved(false), 2500); } catch (e) { setSaveError((e as Error).message); } }
