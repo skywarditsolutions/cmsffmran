@@ -263,6 +263,7 @@ a {
 .admin-msg-dismiss:hover { color: var(--red); }
 .admin-msg-text { margin: 0.3rem 0 0.25rem; font-size: 0.85rem; line-height: 1.35; color: var(--gray-900); }
 .admin-msg-meta { font-size: 0.72rem; color: var(--gray-600); }
+.admin-msg-empty { margin: 0.4rem 0 0; font-size: 0.8rem; color: var(--gray-600); }
 
 /* Quick navigation */
 .sidebar-nav {

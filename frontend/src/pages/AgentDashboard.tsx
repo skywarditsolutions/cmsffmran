@@ -210,13 +210,14 @@ export function AgentDashboard() {
           <a href="https://marketplace.cms.gov/training" target="_blank" rel="noopener noreferrer" className="sidebar-link">Go to training portal →</a>
         </div>
 
-        {/* Messages from admin */}
-        {adminMessages.length > 0 && (
-          <div className="sidebar-card sidebar-messages">
-            <div className="sidebar-card-title">
-              Messages from admin
-              <span className="nav-badge">{adminMessages.length}</span>
-            </div>
+        {/* Messages from admin (always shown so it is discoverable; real-time
+            pushes from admin arrive here via the WebSocket channel). */}
+        <div className="sidebar-card sidebar-messages">
+          <div className="sidebar-card-title">
+            Messages from admin
+            {adminMessages.length > 0 && <span className="nav-badge">{adminMessages.length}</span>}
+          </div>
+          {adminMessages.length > 0 ? (
             <div className="admin-msg-list">
               {adminMessages.map((m) => (
                 <div className="admin-msg" key={m.id}>
@@ -231,8 +232,10 @@ export function AgentDashboard() {
                 </div>
               ))}
             </div>
-          </div>
-        )}
+          ) : (
+            <p className="admin-msg-empty hint">No messages from admin yet.</p>
+          )}
+        </div>
 
         {/* Quick navigation */}
         <div className="sidebar-card sidebar-nav">
