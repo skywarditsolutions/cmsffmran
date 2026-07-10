@@ -75,7 +75,21 @@ export async function login(
 
 // Refreshes the Cognito ID token using the stored refresh token.
 // Returns the updated session, or null if refresh failed.
-export async function refreshSession(): Promise<Session | null> {
+//
+// Concurrent callers share a single in-flight refresh so a burst of parallel
+// 401s (e.g. dashboard polling firing at once when the token expires) does not
+// trigger many simultaneous Cognito calls or race on the stored session.
+let refreshInFlight: Promise<Session | null> | null = null;
+
+export function refreshSession(): Promise<Session | null> {
+  if (refreshInFlight) return refreshInFlight;
+  refreshInFlight = doRefresh().finally(() => {
+    refreshInFlight = null;
+  });
+  return refreshInFlight;
+}
+
+async function doRefresh(): Promise<Session | null> {
   const session = getSession();
   if (!session?.refreshToken || !config.cognitoClientId) return null;
 
@@ -96,7 +110,9 @@ export async function refreshSession(): Promise<Session | null> {
       const data = await res.json();
       const newIdToken = data.AuthenticationResult?.IdToken;
       if (newIdToken) {
-        const updated: Session = { ...session, idToken: newIdToken };
+        // Preserve any concurrent session updates; only replace the id token.
+        const latest = getSession() ?? session;
+        const updated: Session = { ...latest, idToken: newIdToken };
         saveSession(updated);
         return updated;
       }
@@ -105,6 +121,17 @@ export async function refreshSession(): Promise<Session | null> {
     /* refresh failed */
   }
   return null;
+}
+
+// True when the session's ID token is expired or will expire within `skew`
+// seconds. Used to refresh proactively before a request rather than waiting
+// for a 401. Returns false when expiry can't be determined so the reactive
+// 401 path remains the backstop.
+export function idTokenExpiringSoon(session: Session | null, skewSeconds = 120): boolean {
+  const claims = session?.idToken ? decodeJwt(session.idToken) : undefined;
+  const exp = typeof claims?.exp === "number" ? (claims.exp as number) : null;
+  if (exp == null) return false;
+  return exp <= Math.floor(Date.now() / 1000) + skewSeconds;
 }
 
 function decodeJwt(token: string): Record<string, unknown> | undefined {

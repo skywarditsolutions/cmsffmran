@@ -1,5 +1,20 @@
 import { config } from "./config";
-import { authHeaders, getSession, refreshSession, clearSession } from "./auth";
+import {
+  authHeaders,
+  getSession,
+  refreshSession,
+  clearSession,
+  idTokenExpiringSoon,
+} from "./auth";
+
+function redirectToLogin(): never {
+  const role = getSession()?.role ?? "agent";
+  clearSession();
+  if (!window.location.pathname.startsWith("/login")) {
+    window.location.href = `/login?role=${role}&expired=1`;
+  }
+  throw new Error("Session expired. Please sign in again.");
+}
 
 async function request<T>(
   method: string,
@@ -7,6 +22,14 @@ async function request<T>(
   body?: unknown,
   auth = false,
 ): Promise<T> {
+  // Proactively refresh the Cognito ID token when it is expired or about to
+  // expire. This prevents the wall of 401s an agent hits after sitting idle
+  // past the token lifetime (e.g. waiting for referrals) and the resulting
+  // "Unauthorized" errors, since the token is renewed before the request.
+  if (auth && idTokenExpiringSoon(getSession())) {
+    await refreshSession();
+  }
+
   const doFetch = (): Promise<Response> =>
     fetch(`${config.apiUrl}${path}`, {
       method,
@@ -19,22 +42,14 @@ async function request<T>(
 
   let res = await doFetch();
 
-  // If we get 401 and this is an authenticated request, try refreshing the
-  // Cognito token once before giving up. If refresh fails, clear session and
-  // redirect to login so the user gets a clear re-auth prompt instead of a
-  // confusing "Unauthorized" error.
+  // If we still get 401 on an authenticated request, try refreshing the token
+  // once and retry. If it is STILL 401 after that, the session cannot be
+  // recovered, so clear it and redirect to login for a clean re-auth prompt
+  // instead of surfacing a confusing raw "Unauthorized" error to the user.
   if (res.status === 401 && auth) {
     const refreshed = await refreshSession();
-    if (refreshed) {
-      res = await doFetch();
-    } else {
-      const role = getSession()?.role ?? "agent";
-      clearSession();
-      if (!window.location.pathname.startsWith("/login")) {
-        window.location.href = `/login?role=${role}&expired=1`;
-      }
-      throw new Error("Session expired. Please sign in again.");
-    }
+    if (refreshed) res = await doFetch();
+    if (res.status === 401) redirectToLogin();
   }
 
   const text = await res.text();
